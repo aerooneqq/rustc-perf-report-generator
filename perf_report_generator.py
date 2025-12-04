@@ -121,13 +121,24 @@ class AggregatedBenchData:
         return f'{self.name} = ({self.sum}, {self.avg})'
 
 
+def serialize_results_to_csv(results: list[AggregatedBenchData], output_file_path: str):
+    with open(output_file_path, 'w') as fout:
+        fout.writelines([
+            'Benchmark;Sum;Avg;\n',
+            *list(map(lambda r: f'{r.name};{r.sum};{r.avg}\n', results))
+        ])
+
+
 def main():
     import sys
-    commits_file_path = sys.argv[1]
+    commits_file_path, output_file_path = sys.argv[1], sys.argv[2]
+
     commits = read_commits_file(commits_file_path)
 
     benches_results: dict[str, list[float]] = {}
     for [from_commit, to_commit] in commits:
+        print(f'Processing commits: {from_commit}, {to_commit}')
+
         bench_tables = download_benchmarks_data(
             from_commit,
             to_commit,
@@ -145,6 +156,10 @@ def main():
 
     filtered_results = filter(lambda x: len(x[1]) > 0, benches_results.items())
     mapped_results = map(lambda x: AggregatedBenchData(x[0], x[1]), filtered_results)
-    aggregated_results: list[(str, AggregatedBenchData)] = list(mapped_results)
+    aggregated_results: list[AggregatedBenchData] = list(mapped_results)
 
-main()
+    serialize_results_to_csv(aggregated_results, output_file_path)
+
+
+if __name__ == "__main__":
+    main()
