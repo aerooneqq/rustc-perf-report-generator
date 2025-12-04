@@ -4,6 +4,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
+
 @dataclass
 class BenchTable:
     name: str
@@ -61,6 +62,7 @@ def construct_query_url(first_sha: str, second_sha: str, stat: str, tab: str):
 
 
 def dowload_url(url: str) -> WebDriver:
+    print(f"Started downloading URL {url}")
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
     browser = webdriver.Chrome(options=chrome_options)
@@ -69,11 +71,13 @@ def dowload_url(url: str) -> WebDriver:
     import time
     time.sleep(5)
 
+    print(f'Finished downloading URL {url}')
+
     return browser
 
 
 def parse_benchmark_tables(browser: WebDriver) -> list[BenchTable]:
-    elem = browser.find_element(value = "app")
+    elem = browser.find_element(value="app")
     tables = elem.find_elements(By.CLASS_NAME, "bench-table")
 
     bench_tables = []
@@ -95,15 +99,52 @@ def parse_benchmark_tables(browser: WebDriver) -> list[BenchTable]:
                 results=bench_results
             ))
         except Exception as ex:
-            print(ex)
-            print(f'Table {table_id} does not contain results')
-        
+            print(f'Table "{table_id}" does not contain results, skipping it')
+
     return bench_tables
 
 
-print(download_benchmarks_data(
-    '0f6dae4afc8959262e7245fddfbdfc7a1de6f34a',
-    '80d8f292d82d735f83417221dd63b0dd2bbb8dd2',
-    'instructions:u',
-    'compile'
-))
+def read_commits_file(file_path: str) -> list[(str, str)]:
+    with open(file_path, 'r') as fin:
+        return list(map(lambda s: s.split(), fin.readlines()))
+
+
+class AggregatedBenchData:
+    def __init__(self, name: str, raw_values: list[float]):
+        assert len(raw_values) > 0
+
+        self.name = name
+        self.sum = sum(raw_values)
+        self.avg = sum(raw_values) / len(raw_values)
+
+    def __repr__(self) -> str:
+        return f'{self.name} = ({self.sum}, {self.avg})'
+
+
+def main():
+    import sys
+    commits_file_path = sys.argv[1]
+    commits = read_commits_file(commits_file_path)
+
+    benches_results: dict[str, list[float]] = {}
+    for [from_commit, to_commit] in commits:
+        bench_tables = download_benchmarks_data(
+            from_commit,
+            to_commit,
+            'instructions:u',
+            'compile'
+        )
+
+        for table in bench_tables:
+            for res in table.results:
+                bench_full_name = table.name + '::' + res.name
+                if bench_full_name not in benches_results:
+                    benches_results[bench_full_name] = []
+
+                benches_results[bench_full_name].append(res.change)
+
+    filtered_results = filter(lambda x: len(x[1]) > 0, benches_results.items())
+    mapped_results = map(lambda x: AggregatedBenchData(x[0], x[1]), filtered_results)
+    aggregated_results: list[(str, AggregatedBenchData)] = list(mapped_results)
+
+main()
