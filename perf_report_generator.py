@@ -52,7 +52,7 @@ def download_benchmarks_data(first_sha: str, second_sha: str, stat: str, tab: st
 
     if alert_shown:
         print(f'An alert was trigerred, commits {first_sha} and {second_sha} are invalid for comparison')
-        exit(1)
+        return []
 
     return parse_benchmark_tables(browser)
 
@@ -165,7 +165,7 @@ def main():
 
         for table in bench_tables:
             for res in table.results:
-                bench_full_name = table.name + '::' + res.name
+                bench_full_name = '::'.join([table.name, res.name, res.profile, res.scenario])
                 if bench_full_name not in benches_results:
                     benches_results[bench_full_name] = []
 
@@ -174,6 +174,7 @@ def main():
     filtered_results = filter(lambda x: len(x[1]) > 0, benches_results.items())
     mapped_results = map(lambda x: AggregatedBenchData(x[0], x[1]), filtered_results)
     aggregated_results: list[AggregatedBenchData] = list(mapped_results)
+    aggregated_results.sort(key=lambda a: a.sum)
 
     serialize_results_to_csv(aggregated_results, output_file_path)
 
