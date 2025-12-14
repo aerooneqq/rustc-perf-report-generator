@@ -58,7 +58,7 @@ def download_benchmarks_data(first_sha: str, second_sha: str, stat: str, tab: st
     browser, alert_shown = download_url(url)
 
     if alert_shown:
-        print(f'An alert was trigerred, commits {first_sha} and {second_sha} are invalid for comparison')
+        print(f'An alert was triggered, commits {first_sha} and {second_sha} are invalid for comparison')
         return []
 
     return parse_benchmark_tables(browser)
@@ -93,7 +93,7 @@ def download_url(url: str) -> Tuple[WebDriver, bool]:
     try:
         element = WebDriverWait(browser, timeout=5).until(EC.any_of(alert_present_ec, bench_tables_ec))
     except TimeoutException:
-        print('Timeoutted while waiting for the page to load')
+        print('Timeout while waiting for the page to load')
         exit(1)
 
     print('Finished downloading page')
@@ -142,8 +142,7 @@ class AggregatedBenchData:
         self.values = dict(map(lambda p: (p[0], sum(p[1])), raw_values.items()))
 
         self.ordered_values = list(self.values.items())
-        self.ordered_values.sort(key = lambda x: x[0])
-
+        self.ordered_values.sort(key=lambda x: x[0])
 
     def to_csv_line(self) -> str:
         return f'{self.name};{";".join(map(lambda x: str(x[1]), self.ordered_values))}\n'
@@ -175,7 +174,7 @@ def aggregate_tables_data(tables: list[BenchTable], output_file_path: str):
 
                 return d[key]
 
-            bench_results =  get_or_create(benches_results, bench_full_name, {})
+            bench_results = get_or_create(benches_results, bench_full_name, {})
             get_or_create(bench_results, 'change', []).append(res.change)
             get_or_create(bench_results, 'raw_change', []).append(res.after_raw - res.before_raw)
 
